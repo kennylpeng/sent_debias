@@ -361,7 +361,7 @@ class WordEvaluator(object):
 		equalize = self.equalize
 		gender_specific_words = self.gender_specific_words
 
-		gender_subspace = my_we.doPCA(definitional, self.E).components_[:args.num_dimension]
+		gender_subspace = my_we.doPCA(definitional, self.E)[:args.num_dimension]
 		print("gender subspace shape: {}".format(gender_subspace.shape))
 		specific_set = set(gender_specific_words)
 		for i, w in enumerate(self.vocab):
