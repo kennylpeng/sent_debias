@@ -61,6 +61,10 @@ def parse_args():
 						help="Whether to equalize.")
 	parser.add_argument("--def_pairs_name", default="all", type=str,
 						help="Name of definitional sentence pairs.")
+	parser.add_argument("--neg_def_pairs_name", default=None, type=str,
+						help="Name of negative definitional sentence pairs.")
+	parser.add_argument("--pres_weight", default=0.0, type=float,
+						help="Name of negative definitional sentence pairs.")
 	parser.add_argument("--model", "-m", type=str, default="dummy")
 	parser.add_argument("--output_name", type=str)
 	parser.add_argument("--results_dir", type=str,
@@ -138,7 +142,7 @@ def run_binary_weat_test(encs):
 	return weat_score, effect_size
 
 
-def evaluate(args, def_pairs, word_level=False):
+def evaluate(args, def_pairs, word_level=False, neg_def_pairs=None, pres_weight=0.0):
 	'''Evaluate bias level with given definitional sentence pairs.'''
 	results_path = os.path.join(args.results_dir, args.output_name)
 
@@ -156,7 +160,7 @@ def evaluate(args, def_pairs, word_level=False):
 	gender_subspace = None
 	if (args.debias):
 		gender_subspace = compute_gender_dir(DEVICE, tokenizer, bert_encoder, def_pairs, 
-			args.max_seq_length, k=args.num_dimension, load=True, task=args.model, word_level=word_level, keepdims=True)
+			args.max_seq_length, k=args.num_dimension, load=True, task=args.model, word_level=word_level, keepdims=True, neg_def_pairs=neg_def_pairs, pres_weight=0.0)
 		logger.info("Computed (gender) bias direction")
 
 	with open(args.gendered_words_filename, "r") as f:
@@ -267,7 +271,7 @@ def eval_sent_debias():
 			evaluate(args, def_pairs)
 	else:
 		def_pairs = get_def_pairs(def_pairs_name)
-		evaluate(args, def_pairs)
+		evaluate(args, def_pairs, neg_def_pairs, pres_weights)
 
 
 class WordEvaluator(object):
@@ -443,7 +447,6 @@ def test_bertword():
 
 if __name__ == '__main__':
 	eval_sent_debias()
-
 
 
 

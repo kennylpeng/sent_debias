@@ -55,7 +55,6 @@ class InputExample(object):
 
 	def __init__(self, guid, text_a, text_b=None, label=None):
 		"""Constructs a InputExample.
-
 		Args:
 			guid: Unique id for the example.
 			text_a: string. The untokenized text of the first sequence. For single
@@ -318,10 +317,23 @@ def extract_embeddings_pair(bert_encoder, tokenizer, examples, max_seq_length, d
 	return all_embeddings
 
 
-def doPCA(matrix, num_components=10):
-	pca = PCA(n_components=num_components, svd_solver="auto")
-	pca.fit(matrix) # Produce different results each time...
-	return pca
+def doPCA(matrix, num_components=10, matrixB='none', pres_weight=0.0):
+	if matrixB == 'none':
+		pca = PCA(n_components=num_components, svd_solver="auto")
+		pca.fit(matrix) # Produce different results each time...
+		return pca.components_
+	else:
+		X = matrix
+		Y = matrixB
+		X = X - np.mean(X, axis=0)
+		S = np.cov(X.T)
+		Y = Y - np.mean(Y, axis=0)
+		T = np.cov(Y.T)
+		eigvals, eigvecs = np.linalg.eig(pres_weight*S-(1-pres_weight)*T)
+		top_indices = np.argsort(-eigvals)[:num_components]
+		return [eigvecs[:,i] for i in top_indices]
+		
+
 
 
 def get_def_examples(def_pairs):
@@ -337,13 +349,13 @@ def get_def_examples(def_pairs):
 	return def_examples
 
 
-def compute_gender_dir(device, tokenizer, bert_encoder, def_pairs, max_seq_length, k, load, task, word_level=False, keepdims=False):
+def compute_gender_dir(device, tokenizer, bert_encoder, def_pairs, max_seq_length, k, load, task, word_level=False, keepdims=False, neg_def_pairs=None, pres_weight=0.0):
 	'''Compute gender bias direction from definitional sentence pairs.'''
 	def_examples = get_def_examples(def_pairs) # 1D list where 2i and 2i+1 are a pair
 
 	all_embeddings = extract_embeddings_pair(bert_encoder, tokenizer, def_examples, max_seq_length, device, load, task, 
 		label_list=None, output_mode=None, norm=True, word_level=word_level)
-	gender_dir = doPCA(all_embeddings).components_[:k]
+	gender_dir = doPCA(all_embeddings)[:k]
 	if (not keepdims):
 		gender_dir = np.mean(gender_dir, axis=0)
 	logger.info("gender direction={} {} {}".format(gender_dir.shape,
@@ -739,8 +751,10 @@ def prepare_model_and_bias(args, device, num_labels, cache_dir):
 	if (args.debias):
 		bert_encoder = BertEncoder(model, device)
 		def_pairs = get_def_pairs(args.def_pairs_name)
+		neg_def_pairs = get_def_pairs(args.def_neg_pairs_name)
+		pres_weight = args.pres_weight
 		gender_dir = compute_gender_dir(device, tokenizer, bert_encoder, 
-			def_pairs, args.max_seq_length, k=args.num_dimension, load=True, task='pretrained')
+			def_pairs, args.max_seq_length, k=args.num_dimension, load=True, task='pretrained', neg_def_pairs=neg_def_pairs, pres_weight=pres_weight)
 		gender_dir = torch.tensor(gender_dir, dtype=torch.float, device=device)
 
 	return model, tokenizer, gender_dir
@@ -759,8 +773,10 @@ def prepare_model_and_pretrained_bias(args, device, num_labels, cache_dir):
 	if (args.debias):
 		bert_encoder_pretrained = BertEncoder(model_pretrained, device)
 		def_pairs = get_def_pairs(args.def_pairs_name)
+		neg_def_pairs = get_def_pairs(args.def_neg_pairs_name)
+		pres_weight = args.pres_weight
 		gender_dir_pretrained = compute_gender_dir(device, tokenizer, bert_encoder_pretrained, 
-			def_pairs, args.max_seq_length, k=args.num_dimension, load=True, task='pretrained')
+			def_pairs, args.max_seq_length, k=args.num_dimension, load=True, task='pretrained', neg_def_pairs=neg_def_pairs, pres_weight=pres_weight)
 		gender_dir_pretrained = torch.tensor(gender_dir_pretrained, dtype=torch.float, device=device)
 
 	if (args.resume_model_path == ""):
@@ -982,7 +998,9 @@ def main():
 		if args.debias:
 			bert_encoder = BertEncoder(model, device)
 			def_pairs = get_def_pairs(args.def_pairs_name)
-			gender_dir_tuned = compute_gender_dir(device, tokenizer, bert_encoder, def_pairs, args.max_seq_length, k=args.num_dimension, load=False, task=args.task_name)
+			neg_def_pairs = get_def_pairs(args.def_neg_pairs_name)
+			pres_weight = args.pres_weight
+			gender_dir_tuned = compute_gender_dir(device, tokenizer, bert_encoder, def_pairs, args.max_seq_length, k=args.num_dimension, load=False, task=args.task_name, neg_def_pairs=neg_def_pairs, pres_weight=pres_weight)
 			gender_dir_tuned = torch.tensor(gender_dir_tuned, dtype=torch.float, device=device)
 
 		eval_examples = processor.get_dev_examples(args.data_dir)
@@ -1061,9 +1079,3 @@ def main():
 
 if __name__ == "__main__":
 	main()
-
-
-
-
-
-
