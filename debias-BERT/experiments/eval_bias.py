@@ -160,7 +160,7 @@ def evaluate(args, def_pairs, word_level=False, neg_def_pairs=None, pres_weight=
 	gender_subspace = None
 	if (args.debias):
 		gender_subspace = compute_gender_dir(DEVICE, tokenizer, bert_encoder, def_pairs, 
-			args.max_seq_length, k=args.num_dimension, load=True, task=args.model, word_level=word_level, keepdims=True, neg_def_pairs=neg_def_pairs, pres_weight=0.0)
+			args.max_seq_length, k=args.num_dimension, load=True, task=args.model, word_level=word_level, keepdims=True, neg_def_pairs=neg_def_pairs, pres_weight=pres_weight)
 		logger.info("Computed (gender) bias direction")
 
 	with open(args.gendered_words_filename, "r") as f:
@@ -274,7 +274,8 @@ def eval_sent_debias():
 	else:
 		def_pairs = get_def_pairs(def_pairs_name)
 		neg_def_pairs = get_def_pairs(neg_def_pairs_name)
-		evaluate(args, def_pairs, neg_def_pairs, pres_weights)
+		print(neg_def_pairs)
+		evaluate(args, def_pairs, neg_def_pairs=neg_def_pairs, pres_weight=pres_weight)
 
 
 class WordEvaluator(object):
