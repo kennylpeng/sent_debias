@@ -325,13 +325,14 @@ def doPCA(matrix, num_components=10, matrixB='none', pres_weight=0.0):
 	else:
 		X = matrix
 		Y = matrixB
+		print(Y)
 		X = X - np.mean(X, axis=0)
 		S = np.cov(X.T)
 		Y = Y - np.mean(Y, axis=0)
 		T = np.cov(Y.T)
 		eigvals, eigvecs = np.linalg.eig(pres_weight*S-(1-pres_weight)*T)
 		top_indices = np.argsort(-eigvals)[:num_components]
-		return [eigvecs[:,i] for i in top_indices]
+		return np.array([eigvecs[:,i] for i in top_indices])
 		
 
 
@@ -358,7 +359,7 @@ def compute_gender_dir(device, tokenizer, bert_encoder, def_pairs, max_seq_lengt
 		label_list=None, output_mode=None, norm=True, word_level=word_level)
 	pres_embeddings = extract_embeddings_pair(bert_encoder, tokenizer, neg_def_examples, max_seq_length, device, load, task, 
 		label_list=None, output_mode=None, norm=True, word_level=word_level)
-	gender_dir = doPCA(all_embeddings, pres_embeddings, pres_weight)[:k]
+	gender_dir = doPCA(all_embeddings, matrixB=pres_embeddings, pres_weight=pres_weight)[:k]
 	if (not keepdims):
 		gender_dir = np.mean(gender_dir, axis=0)
 	logger.info("gender direction={} {} {}".format(gender_dir.shape,
