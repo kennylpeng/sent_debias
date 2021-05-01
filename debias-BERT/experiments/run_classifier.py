@@ -352,10 +352,13 @@ def get_def_examples(def_pairs):
 def compute_gender_dir(device, tokenizer, bert_encoder, def_pairs, max_seq_length, k, load, task, word_level=False, keepdims=False, neg_def_pairs=None, pres_weight=0.0):
 	'''Compute gender bias direction from definitional sentence pairs.'''
 	def_examples = get_def_examples(def_pairs) # 1D list where 2i and 2i+1 are a pair
+	neg_def_examples = get_def_examples(neg_def_pairs) # 1D list where 2i and 2i+1 are a pair
 
 	all_embeddings = extract_embeddings_pair(bert_encoder, tokenizer, def_examples, max_seq_length, device, load, task, 
 		label_list=None, output_mode=None, norm=True, word_level=word_level)
-	gender_dir = doPCA(all_embeddings)[:k]
+	pres_embeddings = extract_embeddings_pair(bert_encoder, tokenizer, neg_def_examples, max_seq_length, device, load, task, 
+		label_list=None, output_mode=None, norm=True, word_level=word_level)
+	gender_dir = doPCA(all_embeddings, pres_embeddings, pres_weight)[:k]
 	if (not keepdims):
 		gender_dir = np.mean(gender_dir, axis=0)
 	logger.info("gender direction={} {} {}".format(gender_dir.shape,
@@ -663,6 +666,10 @@ def parse_args():
 
 	parser.add_argument("--def_pairs_name", default="all", type=str,
 						help="Name of definitional sentence pairs.")
+	parser.add_argument("--neg_def_pairs_name", default=None, type=str,
+						help="Name of negative definitional sentence pairs.")
+	parser.add_argument("--pres_weight", default=0.0, type=float,
+						help="Preservation weight")
 	parser.add_argument("--num_dimension", "-k", type=int, default=1,
 						help="dimensionality of bias subspace")
 	args = parser.parse_args()
@@ -751,7 +758,7 @@ def prepare_model_and_bias(args, device, num_labels, cache_dir):
 	if (args.debias):
 		bert_encoder = BertEncoder(model, device)
 		def_pairs = get_def_pairs(args.def_pairs_name)
-		neg_def_pairs = get_def_pairs(args.def_neg_pairs_name)
+		neg_def_pairs = get_def_pairs(args.neg_def_pairs_name)
 		pres_weight = args.pres_weight
 		gender_dir = compute_gender_dir(device, tokenizer, bert_encoder, 
 			def_pairs, args.max_seq_length, k=args.num_dimension, load=True, task='pretrained', neg_def_pairs=neg_def_pairs, pres_weight=pres_weight)
