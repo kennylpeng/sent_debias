@@ -220,6 +220,8 @@ def eval_sent_debias():
 	'''
 	args = parse_args()
 	def_pairs_name = args.def_pairs_name
+	neg_def_pairs_name = args.neg_def_pairs_name
+	pres_weight = args.pres_weight
 	size_prefix = "allsize"
 	accdomain_prefix = "accdomain"
 	domain_prefix = "moredomain"
@@ -271,6 +273,7 @@ def eval_sent_debias():
 			evaluate(args, def_pairs)
 	else:
 		def_pairs = get_def_pairs(def_pairs_name)
+		neg_def_pairs = get_def_pairs(neg_def_pairs_name)
 		evaluate(args, def_pairs, neg_def_pairs, pres_weights)
 
 
